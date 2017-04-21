@@ -1,2 +1,2 @@
 # Chess-Computer-Vision
-A project in Computer Visualisation at NTNU
+A project in Computer Vision at NTNU
