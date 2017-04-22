@@ -28,7 +28,7 @@ def main(name):
 
 
 def open_image(name):
-    path = os.path.join(os.getcwd(), "images/", name + ".png")
+    path = os.path.join(os.getcwd(), "images/", name + ".jpg")
     if os.path.exists(path):
         image = cv.imread(path)
     else:
@@ -60,5 +60,5 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         image_path = sys.argv[1]
     else:
-        image_path = "board1"
+        image_path = "board0"
     main(image_path)
