@@ -59,7 +59,7 @@ def find_corner(image, corner_x, corner_y):
     result = state.iterateAStar()
     best = state.bestNode
     updates = 0
-    while result.state != 'goal' and updates < 20:
+    while result.state != 'goal' and updates < 50:
         result = state.iterateAStar()
         new_best = state.bestNode
         if new_best == best:
