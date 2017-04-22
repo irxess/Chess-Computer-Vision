@@ -36,6 +36,10 @@ class DataSet(object):
     def c_labels(self):
         return self._c_labels
 
+    @property
+    def num_examples(self):
+        return self._num_examples
+
     def next_batch(self, batch_size):
         start = self._index_in_epoch
         # Go to the next epoch
@@ -89,7 +93,6 @@ def expand_instance(instance):
 
 
 def extract_data(validation_fraction, test_fraction):
-
     # Read data set from data directory
     data = []
     for piece in PIECES:
@@ -146,6 +149,10 @@ def extract_data(validation_fraction, test_fraction):
             new_tr.append(derived_instance)
     tr = new_tr
 
+    random.shuffle(tr)
+    random.shuffle(vl)
+    random.shuffle(ts)
+
     tr_imgs = np.array([instance[0] for instance in tr])
     tr_lbs_p = np.array([instance[1] for instance in tr])
     tr_lbs_c = np.array([instance[2] for instance in tr])
@@ -155,9 +162,6 @@ def extract_data(validation_fraction, test_fraction):
     ts_imgs = np.array([instance[0] for instance in ts])
     ts_lbs_p = np.array([instance[1] for instance in ts])
     ts_lbs_c = np.array([instance[2] for instance in ts])
-    print(np.size(tr_imgs, 0))
-    print(np.size(vl_imgs, 0))
-    print(np.size(ts_imgs, 0))
 
     return {'tr_imgs': tr_imgs, 'tr_lbs_p': tr_lbs_p, 'tr_lbs_c': tr_lbs_c,
             'vl_imgs': vl_imgs, 'vl_lbs_p': vl_lbs_p, 'vl_lbs_c': vl_lbs_c,

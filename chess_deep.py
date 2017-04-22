@@ -151,7 +151,7 @@ def train_model():
 
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        for i in range(4000):
+        for i in range(20000):
             batch = chess.train.next_batch(50)
             if i % 100 == 0:
                 train_accuracy_p = accuracy_p.eval(feed_dict={
@@ -159,9 +159,9 @@ def train_model():
                 train_accuracy_c = accuracy_c.eval(feed_dict={
                     x: batch[0], c_y_: batch[2], keep_prob: 1.0})
                 test_accuracy_p = accuracy_p.eval(feed_dict={
-                    x: chess.test.images, p_y_: chess.test.p_labels, keep_prob: 0.8})
+                    x: chess.test.images, p_y_: chess.test.p_labels, keep_prob: 1.0})
                 test_accuracy_c = accuracy_c.eval(feed_dict={
-                    x: chess.test.images, c_y_: chess.test.c_labels, keep_prob: 0.8})
+                    x: chess.test.images, c_y_: chess.test.c_labels, keep_prob: 1.0})
                 print('step {:04d} accuracy: train p {:.2f}, train c {:.2f}'.format(
                     i, train_accuracy_p, train_accuracy_c))
                 print('                    test  p {:.2f}, test  c {:.2f}'.format(
