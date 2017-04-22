@@ -2,6 +2,7 @@ import cv2 as cv
 import numpy as np
 from astar import Node, Graph, AStar
 
+
 def find_chessboard(image, method):
     if method == 'greendiff':
         green = greendiff(image)
@@ -12,6 +13,7 @@ def find_chessboard(image, method):
         return
 
     return corners
+
 
 def greendiff(image):
     gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
@@ -45,7 +47,6 @@ def find_corners_using_astar(image):
         corners[i][1] = corner[1]
         i += 1
         print('Found the coordinates of a corner.')
-    print(corners)
     return corners
 
 

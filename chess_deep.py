@@ -96,8 +96,6 @@ def bias_variable(shape):
 
 
 def classify_squares(images):
-    # Enable saving and loading of variables
-    saver = tf.train.Saver()
 
     # Create the model
     x = tf.placeholder(tf.float32, [None, 50, 50, 3])
@@ -105,12 +103,17 @@ def classify_squares(images):
     # Build the graph for the deep net
     y_conv_p, y_conv_c, keep_prob = deepnn(x)
 
+    # Define classification
+    class_p = tf.argmax(y_conv_p, 1)
+    class_c = tf.argmax(y_conv_c, 1)
+
+    # Enable saving and loading of variables
+    saver = tf.train.Saver()
+
     with tf.Session() as sess:
         # Restore variables from disk.
         saver.restore(sess, "/tmp/chess_model.ckpt")
-
-        class_p = tf.argmax(y_conv_p, 1)
-        class_c = tf.argmax(y_conv_c, 1)
+        print("Model restored.")
 
         images_p = class_p.eval(feed_dict={x: images, keep_prob: 1.0})
         images_c = class_c.eval(feed_dict={x: images, keep_prob: 1.0})
@@ -148,7 +151,7 @@ def train_model():
 
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        for i in range(1000):
+        for i in range(4000):
             batch = chess.train.next_batch(50)
             if i % 100 == 0:
                 train_accuracy_p = accuracy_p.eval(feed_dict={

@@ -1,4 +1,6 @@
 import cv2 as cv
+from skimage import io
+import numpy as np
 import os
 import chess_deep
 from chessboard_finding import find_chessboard
@@ -11,23 +13,18 @@ def main(name):
     chessboard_image = transform(image, coordinates, 50)
     cut_and_save(chessboard_image, 50, 50)
 
-    # Load squares
-
     # Check for model
-    if not os.path.isfile("/tmp/chess_model.ckpt"):
-        #train
-        pass
+    if not os.path.isfile("/tmp/checkpoint"):
+        chess_deep.train_model()
+
+    # Load squares
+    chess_squares = read_square_images()
 
     # classify
+    chess_squares_p, chess_squares_c = chess_deep.classify_squares(chess_squares)
 
     # translate to human readable output
-
-    # Something like this, depending on method:
-    # coordinates = find_chessboard(image)
-    # chess_board = transform(image, coordinates)
-    # chess_squares = magic(image)
-    # chess_pieces = more_magic(chess_squares)
-    # print(chess_pieces)
+    print_classes(chess_squares_p, chess_squares_c)
 
 
 def open_image(name):
@@ -39,11 +36,24 @@ def open_image(name):
         return
     return image
 
+
 def read_square_images():
+    squares = []
     sq_dir = os.path.join(os.getcwd(), "images", "squares")
-    #for filname in os.listdir(sq_dir):
-        #if filname[0] in
-    pass
+    for i in range(8):
+        for j in range(8):
+            filename = str(i) + str(j) + ".png"
+            img = io.imread(os.path.join(sq_dir, filename))
+            squares.append(img)
+    return np.array(squares)
+
+
+def print_classes(p, c):
+    for i in range(8):
+        for j in range(8):
+            print('[' + str(p[j+i*7]) + str(c[j+i*7])+']', end=' ')
+        print()
+
 
 if __name__ == "__main__":
     import sys
