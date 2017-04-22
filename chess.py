@@ -51,7 +51,7 @@ def read_square_images():
 def print_classes(p, c):
     for i in range(8):
         for j in range(8):
-            print('[' + str(p[j+i*8]) + str(c[j+i*8])+']', end=' ')
+            print('[' + str(p[i+j*8]) + str(c[i+j*8])+']', end=' ')
         print()
 
 
