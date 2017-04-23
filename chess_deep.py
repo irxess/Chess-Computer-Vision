@@ -94,7 +94,7 @@ def bias_variable(shape):
 def classify_squares(images):
 
     # Create the model
-    x = tf.placeholder(tf.float32, [None, 50, 50, 3])
+    x = tf.placeholder(tf.float32, [None, 48, 48, 3])
 
     # Build the graph for the deep net
     y_conv, keep_prob = deepnn(x)
@@ -120,7 +120,7 @@ def train_model():
     chess = chess_dataset.read_data_sets()
 
     # Create the model
-    x = tf.placeholder(tf.float32, [None, 50, 50, 3])
+    x = tf.placeholder(tf.float32, [None, 48, 48, 3])
 
     # Define loss and optimizer
     y_ = tf.placeholder(tf.float32, [None, 13])
@@ -140,7 +140,7 @@ def train_model():
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         for i in range(20000):
-            batch = chess.train.next_batch(50)
+            batch = chess.train.next_batch(75)
             if i % 100 == 0:
                 train_accuracy = accuracy.eval(feed_dict={
                     x: batch[0], y_: batch[1], keep_prob: 1.0})
