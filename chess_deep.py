@@ -5,6 +5,9 @@ import chess_dataset
 # Disable compile warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
+# Model save location
+"/tmp/chess_model.ckpt"
+
 def deepnn(x):
     """deepnn builds the graph for a deep net for classifying chess pieces.
 
@@ -22,7 +25,7 @@ def deepnn(x):
     # First convolutional layer - maps one rgb image to 32 feature maps.
     W_conv1 = weight_variable([5, 5, 3, 32])
     b_conv1 = bias_variable([32])
-    h_conv1 = tf.nn.relu(conv2d(x, W_conv1) + b_conv1)
+    h_conv1 = tf.nn.elu(conv2d(x, W_conv1) + b_conv1)
 
     # Pooling layer - downsamples by 2X.
     h_pool1 = max_pool_2x2(h_conv1)
@@ -30,18 +33,26 @@ def deepnn(x):
     # Second convolutional layer -- maps 32 feature maps to 64.
     W_conv2 = weight_variable([5, 5, 32, 64])
     b_conv2 = bias_variable([64])
-    h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)
+    h_conv2 = tf.nn.elu(conv2d(h_pool1, W_conv2) + b_conv2)
 
     # Second pooling layer.
     h_pool2 = max_pool_2x2(h_conv2)
 
-    # Fully connected layer 1 -- after 2 round of downsampling, our 20x20 image
+    # Third convolutional layer -- maps 64 feature maps to 128.
+    W_conv3 = weight_variable([5, 5, 64, 128])
+    b_conv3 = bias_variable([128])
+    h_conv3 = tf.nn.elu(conv2d(h_pool2, W_conv3) + b_conv3)
+
+    # Third pooling layer.
+    h_pool3 = max_pool_2x2(h_conv3)
+
+    # Fully connected layer 1 -- after 2 round of downsampling, our 50x50 image
     # is down to 5x5x64 feature maps -- maps this to 1024 features.
-    W_fc1 = weight_variable([13 * 13 * 64, 1024])
+    W_fc1 = weight_variable([7 * 7 * 128, 1024])
     b_fc1 = bias_variable([1024])
 
-    h_pool2_flat = tf.reshape(h_pool2, [-1, 13*13*64])
-    h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
+    h_pool2_flat = tf.reshape(h_pool3, [-1, 7 * 7 * 128])
+    h_fc1 = tf.nn.elu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
 
     # Dropout - controls the complexity of the model, prevents co-adaptation of
     # features.
@@ -49,11 +60,16 @@ def deepnn(x):
     h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
 
     # Map the 1024 features to 7 classes, one for each piece
-    W_fc2 = weight_variable([1024, 7])
-    b_fc2 = bias_variable([7])
+    W_fc2_p = weight_variable([1024, 7])
+    b_fc2_p = bias_variable([7])
 
-    y_conv = tf.matmul(h_fc1_drop, W_fc2) + b_fc2
-    return y_conv, keep_prob
+    # Map the 1024 features to 3 classes, one for each color (white, black, none)
+    W_fc2_c = weight_variable([1024, 3])
+    b_fc2_c = bias_variable([3])
+
+    y_conv_p = tf.matmul(h_fc1_drop, W_fc2_p) + b_fc2_p
+    y_conv_c = tf.matmul(h_fc1_drop, W_fc2_c) + b_fc2_c
+    return y_conv_p, y_conv_c, keep_prob
 
 
 def conv2d(x, W):
@@ -79,7 +95,33 @@ def bias_variable(shape):
     return tf.Variable(initial)
 
 
-def main():
+def classify_squares(images):
+
+    # Create the model
+    x = tf.placeholder(tf.float32, [None, 50, 50, 3])
+
+    # Build the graph for the deep net
+    y_conv_p, y_conv_c, keep_prob = deepnn(x)
+
+    # Define classification
+    class_p = tf.argmax(y_conv_p, 1)
+    class_c = tf.argmax(y_conv_c, 1)
+
+    # Enable saving and loading of variables
+    saver = tf.train.Saver()
+
+    with tf.Session() as sess:
+        # Restore variables from disk.
+        saver.restore(sess, "/tmp/chess_model.ckpt")
+        print("Model restored.")
+
+        images_p = class_p.eval(feed_dict={x: images, keep_prob: 1.0})
+        images_c = class_c.eval(feed_dict={x: images, keep_prob: 1.0})
+
+        return images_p, images_c
+
+
+def train_model():
     # Import data
     chess = chess_dataset.read_data_sets()
 
@@ -87,32 +129,48 @@ def main():
     x = tf.placeholder(tf.float32, [None, 50, 50, 3])
 
     # Define loss and optimizer
-    y_ = tf.placeholder(tf.float32, [None, 7])
+    p_y_ = tf.placeholder(tf.float32, [None, 7])
+    c_y_ = tf.placeholder(tf.float32, [None, 3])
 
     # Build the graph for the deep net
-    y_conv, keep_prob = deepnn(x)
+    y_conv_p, y_conv_c, keep_prob = deepnn(x)
 
-    cross_entropy = tf.reduce_mean(
-        tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y_conv))
-    train_step = tf.train.AdamOptimizer(1e-4).minimize(cross_entropy)
-    correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1))
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+    cross_entropy_p = tf.reduce_mean(
+        tf.nn.softmax_cross_entropy_with_logits(labels=p_y_, logits=y_conv_p))
+    cross_entropy_c = tf.reduce_mean(
+        tf.nn.softmax_cross_entropy_with_logits(labels=c_y_, logits=y_conv_c))
+    joint_loss = cross_entropy_p + cross_entropy_c
+    train_step = tf.train.AdamOptimizer(1e-4).minimize(joint_loss)
+    correct_prediction_p = tf.equal(tf.argmax(y_conv_p, 1), tf.argmax(p_y_, 1))
+    correct_prediction_c = tf.equal(tf.argmax(y_conv_c, 1), tf.argmax(c_y_, 1))
+    accuracy_p = tf.reduce_mean(tf.cast(correct_prediction_p, tf.float32))
+    accuracy_c = tf.reduce_mean(tf.cast(correct_prediction_c, tf.float32))
+
+    # Enable saving and loading of variables
+    saver = tf.train.Saver()
 
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         for i in range(20000):
             batch = chess.train.next_batch(50)
             if i % 100 == 0:
-                train_accuracy = accuracy.eval(feed_dict={
-                    x: batch[0], y_: batch[1], keep_prob: 1.0})
-                test_accuracy = accuracy.eval(feed_dict={
-                    x: chess.test.images, y_: chess.test.labels, keep_prob: 1.0})
-                print('step {}, training accuracy {:.2f}, test accuracy {:.2f}'.format(
-                    i, train_accuracy, test_accuracy))
-            train_step.run(feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.5})
+                train_accuracy_p = accuracy_p.eval(feed_dict={
+                    x: batch[0], p_y_: batch[1], keep_prob: 1.0})
+                train_accuracy_c = accuracy_c.eval(feed_dict={
+                    x: batch[0], c_y_: batch[2], keep_prob: 1.0})
+                test_accuracy_p = accuracy_p.eval(feed_dict={
+                    x: chess.test.images, p_y_: chess.test.p_labels, keep_prob: 1.0})
+                test_accuracy_c = accuracy_c.eval(feed_dict={
+                    x: chess.test.images, c_y_: chess.test.c_labels, keep_prob: 1.0})
+                print('step {:04d} accuracy: train p {:.2f}, train c {:.2f}'.format(
+                    i, train_accuracy_p, train_accuracy_c))
+                print('                    test  p {:.2f}, test  c {:.2f}'.format(
+                    test_accuracy_p, test_accuracy_c))
+            train_step.run(feed_dict={x: batch[0], p_y_: batch[1], c_y_: batch[2], keep_prob: 0.5})
 
-        print('test accuracy {:.2f}'.format(accuracy.eval(feed_dict={
-            x: chess.test.images, y_: chess.test.labels, keep_prob: 1.0})))
+        # Save the variables to disk.
+        save_path = saver.save(sess, "/tmp/chess_model.ckpt")
+        print("Model saved in file: {}".format(save_path))
 
 if __name__ == '__main__':
-    main()
+    train_model()
