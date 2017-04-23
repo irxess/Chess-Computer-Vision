@@ -21,11 +21,11 @@ def main(name):
     # Load squares
     chess_squares = read_square_images()
 
-    # classify
-    chess_squares_p, chess_squares_c = chess_deep.classify_squares(chess_squares)
+    # Classify
+    chess_squares = chess_deep.classify_squares(chess_squares)
 
     # translate to human readable output
-    print_classes(chess_squares_p, chess_squares_c)
+    print_classes(chess_squares)
 
 
 def open_image(name):
@@ -44,15 +44,20 @@ def read_square_images():
     for i in range(8):
         for j in range(8):
             filename = str(i) + str(j) + ".png"
-            img = io.imread(os.path.join(sq_dir, filename))
+            img = io.imread(os.path.join(sq_dir, filename))[1:49, 1:49]
             squares.append(img)
     return np.array(squares)
 
 
-def print_classes(p, c):
+def class_to_letter(c):
+    letters = [' ', 'K', 'Q', 'R', 'N', 'B', 'P', 'k', 'q', 'r', 'n', 'b', 'p']
+    return letters[c]
+
+
+def print_classes(classes):
     for i in range(8):
         for j in range(8):
-            print('[' + str(p[i+j*8]) + str(c[i+j*8])+']', end=' ')
+            print('[' + class_to_letter(classes[i+j*8]) + ']', end=' ')
         print()
 
 
