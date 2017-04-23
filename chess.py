@@ -44,7 +44,7 @@ def read_square_images():
     for i in range(8):
         for j in range(8):
             filename = str(i) + str(j) + ".png"
-            img = io.imread(os.path.join(sq_dir, filename))
+            img = io.imread(os.path.join(sq_dir, filename))[1:49, 1:49]
             squares.append(img)
     return np.array(squares)
 
