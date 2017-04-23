@@ -96,7 +96,7 @@ def expand_instance(instance):
 
 def crop_set(data_set):
     for instance in data_set:
-        instance[0] = instance[0][1:50, 1:50]
+        instance[0] = instance[0][1:49, 1:49]
 
 
 def extract_data(validation_fraction, test_fraction):
