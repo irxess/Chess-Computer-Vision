@@ -4,7 +4,7 @@ from skimage.transform import rotate
 import numpy as np
 
 DATA_SET_DIR = os.path.join(os.getcwd(), '50x50')
-PIECES = ['e', 'k', 'q', 'r', 'k', 'b', 'p']
+PIECES = ['e', 'k', 'q', 'r', 'n', 'b', 'p']
 COLORS = ['w', 'b', 'n']
 Datasets = collections.namedtuple('Datasets', ['train', 'validation', 'test'])
 

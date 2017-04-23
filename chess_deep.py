@@ -97,11 +97,10 @@ def classify_squares(images):
     x = tf.placeholder(tf.float32, [None, 50, 50, 3])
 
     # Build the graph for the deep net
-    y_conv_p, y_conv_c, keep_prob = deepnn(x)
+    y_conv, keep_prob = deepnn(x)
 
     # Define classification
-    class_p = tf.argmax(y_conv_p, 1)
-    class_c = tf.argmax(y_conv_c, 1)
+    piece_class = tf.argmax(y_conv, 1)
 
     # Enable saving and loading of variables
     saver = tf.train.Saver()
@@ -111,10 +110,9 @@ def classify_squares(images):
         saver.restore(sess, "/tmp/chess_model.ckpt")
         print("Model restored.")
 
-        images_p = class_p.eval(feed_dict={x: images, keep_prob: 1.0})
-        images_c = class_c.eval(feed_dict={x: images, keep_prob: 1.0})
+        images_classes = piece_class.eval(feed_dict={x: images, keep_prob: 1.0})
 
-        return images_p, images_c
+        return images_classes
 
 
 def train_model():
