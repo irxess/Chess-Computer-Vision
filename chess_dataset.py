@@ -78,8 +78,13 @@ def one_hot_index(p, c):
 
 def expand_instance(instance):
     imgs = []
-    imgs.append(instance[0])
-    imgs.append(np.flip(imgs[0], 0))
+    for i in range(3):
+        for j in range(3):
+            imgs.append(instance[0][i:i+49, j:j+49])
+    flips = []
+    for img in imgs:
+        flips.append(np.flip(img, 0))
+    imgs.extend(flips)
     rotations = []
     for img in imgs:
         rotations.append(rotate(img, 90))
@@ -87,6 +92,11 @@ def expand_instance(instance):
         rotations.append(rotate(img, 270))
     imgs.extend(rotations)
     return [[img, instance[1]] for img in imgs]
+
+
+def crop_set(data_set):
+    for instance in data_set:
+        instance[0] = instance[0][1:50, 1:50]
 
 
 def extract_data(validation_fraction, test_fraction):
@@ -143,9 +153,17 @@ def extract_data(validation_fraction, test_fraction):
             new_tr.append(derived_instance)
     tr = new_tr
 
+    # Crop validation and test set
+    crop_set(vl)
+    crop_set(ts)
+
     random.shuffle(tr)
     random.shuffle(vl)
     random.shuffle(ts)
+
+    print(len(tr))
+    print(len(vl))
+    print(len(ts))
 
     tr_imgs = np.array([instance[0] for instance in tr])
     tr_lbs = np.array([instance[1] for instance in tr])

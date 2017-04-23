@@ -46,12 +46,12 @@ def deepnn(x):
     # Third pooling layer.
     h_pool3 = max_pool_2x2(h_conv3)
 
-    # Fully connected layer 1 -- after 2 round of downsampling, our 50x50 image
-    # is down to 5x5x64 feature maps -- maps this to 1024 features.
-    W_fc1 = weight_variable([7 * 7 * 128, 1024])
+    # Fully connected layer 1 -- after 3 round of downsampling, our 48x48 image
+    # is down to 6x6x128 feature maps -- maps this to 1024 features.
+    W_fc1 = weight_variable([6 * 6 * 128, 1024])
     b_fc1 = bias_variable([1024])
 
-    h_pool2_flat = tf.reshape(h_pool3, [-1, 7 * 7 * 128])
+    h_pool2_flat = tf.reshape(h_pool3, [-1, 6 * 6 * 128])
     h_fc1 = tf.nn.elu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
 
     # Dropout - controls the complexity of the model, prevents co-adaptation of
