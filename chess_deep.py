@@ -155,6 +155,9 @@ def train_model():
                     print("Model saved in file: {}".format(save_path))
                     max_ta = test_accuracy
             train_step.run(feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.7})
+        # Save the variables to disk.
+        save_path = saver.save(sess, "/tmp/chess_model.ckpt")
+        print("Model saved in file: {}".format(save_path))
 
 if __name__ == '__main__':
     train_model()
