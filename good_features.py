@@ -3,34 +3,37 @@ import cv2
 from math import sqrt, atan
 from copy import deepcopy
 from operator import itemgetter
-#from matplotlib import pyplot as plt
 
-img = cv2.imread('images/board1.jpg')
-gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 
-#blurred = cv2.GaussianBlur(gray, (55,55), 0)
-#blurred = cv2.blur(gray, (60,60))
-blurred = cv2.medianBlur(gray, 31)
-#blurred = cv2.bilateralFilter(gray, 9,75,75)
+def find_81_corners(img):
+    gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 
-corners = cv2.goodFeaturesToTrack(blurred,81,0.01,170)
-corners = np.int0(corners)
+    #blurred = cv2.GaussianBlur(gray, (55,55), 0)
+    #blurred = cv2.blur(gray, (60,60))
+    blurred = cv2.medianBlur(gray, 31)
+    #blurred = cv2.bilateralFilter(gray, 9,75,75)
 
-for i in corners:
-    x,y = i.ravel()
-    cv2.circle(img,(x,y),25,255,-1)
+    corners = cv2.goodFeaturesToTrack(blurred,81,0.01,170)
+    weird_corners = np.int0(corners).tolist()
+    corners = []
+    for c in weird_corners:
+        corners.append(c[0])
+    return corners
 
-cv2.imwrite('images/test.png',img)
-
-#plt.imshow(img),plt.show()
+def draw_corners(corners, img, filename):
+    img_copy = img.copy()
+    for i in corners:
+        x,y = i
+        cv2.circle(img_copy,(x,y),25,255,-1)
+    cv2.imwrite('images/' + filename + '.png',img_copy)
 
 def create_line(a, b):
-    ax, ay = a[0]
-    bx, by = b[0]
+    ax, ay = a
+    bx, by = b
     return (ax,ay,bx,by)
 
 def line_to_point_dist(l, p):
-    x0,y0 = p[0]
+    x0,y0 = p
     x1,y1,x2,y2 = l
     numerator = abs((y2-y1)*x0 - (x2-x1)*y0 + x2*y1 - y2*x1)
     denominator = sqrt((y2-y1)**2 + (x2-x1)**2)
@@ -48,65 +51,71 @@ def find_slope(line):
     degrees = atan(slope) * 180 / np.pi
     return degrees
 
-
 # Find lines that are close enough to multiple points
-a_points = corners.tolist()
-result = []
-threshold = 30.0
-while a_points:
-    a = a_points.pop()
-    b_points = deepcopy(a_points) # copy a_points
-    while b_points:
-        b = b_points.pop()
-        c_points = deepcopy(b_points) # copy b_points
-        line = create_line(a,b)
-        points_on_line = 2
-        while c_points:
-            c = c_points.pop()
-            distance = line_to_point_dist(line, c)
-            if distance < threshold:
-                points_on_line += 1
-                #a_points.remove(c)
-                b_points.remove(c)
-        if points_on_line > 5:
-            result.append(line)
+def find_lines_from_points(points):
+    a_points = points
+    result = []
+    threshold = 30.0
+    while a_points:
+        a = a_points.pop()
+        b_points = deepcopy(a_points) # copy a_points
+        while b_points:
+            b = b_points.pop()
+            c_points = deepcopy(b_points) # copy b_points
+            line = create_line(a,b)
+            points_on_line = 2
+            while c_points:
+                c = c_points.pop()
+                distance = line_to_point_dist(line, c)
+                if distance < threshold:
+                    points_on_line += 1
+                    #a_points.remove(c)
+                    b_points.remove(c)
+            if points_on_line > 5:
+                result.append(line)
+    lines = []
+    for r in result:
+        s = find_slope(r)
+        line = (r,s)
+        lines.append(line)
 
+    return lines
 
-lines = []
-for r in result:
-    s = find_slope(r)
-    line = (r,s)
-    lines.append(line)
+def update_line_groups(largest, next_largest, new):
+    if len(new) > len(largest):
+        next_largest = largest
+        largest = new
+    elif len(new) > len(next_largest):
+        next_largest = new
+    return largest, next_largest
 
 # group lines by similair angle
 # assume that the groups we're interested in are the largest
-sorted_lines = sorted(lines,key=itemgetter(1))
-diffs = []
-most_lines = []
-next_most_lines = []
-all_lists = []
-prev_index = 0
-for i in range(len(sorted_lines)-1):
-    diff = sorted_lines[i+1][1]-sorted_lines[i][1]
-    if diff > 5:
-        new_list = sorted_lines[prev_index:i+1]
-        prev_index = i+1
-        all_lists.append(new_list)
-        if len(new_list) > len(most_lines):
-            next_most_lines = most_lines
-            most_lines = new_list
-        elif len(new_list) > len(next_most_lines):
-            next_most_lines = new_list
-last_list = sorted_lines[prev_index:]
-all_lists.append(last_list)
-if len(last_list) > len(most_lines):
-    next_most_lines = most_lines
-    most_lines = last_list
-elif len(last_list) > len(next_most_lines):
-    next_most_lines = last_list
+def find_largest_line_groups(lines):
+    sorted_lines = sorted(lines,key=itemgetter(1))
+    diffs = []
+    most_lines = []
+    next_most_lines = []
+    all_lists = []
+    prev_index = 0
+    for i in range(len(sorted_lines)-1):
+        diff = sorted_lines[i+1][1]-sorted_lines[i][1]
+        if diff > 5:
+            new_list = sorted_lines[prev_index:i+1]
+            prev_index = i+1
+            all_lists.append(new_list)
+            most_lines, next_most_lines = update_line_groups(most_lines, next_most_lines, new_list)
+    last_list = sorted_lines[prev_index:]
+        #diff = last_list[-1][1] - abs(all_lists[0][0][1])
+        #if diff < 5:
+        #    print("Wrapping corners found.")
+        #    all_lists[0] += last_list
+        #else:
+    all_lists.append(last_list)
+    most_lines, next_most_lines = update_line_groups(most_lines, next_most_lines, last_list)
+    return most_lines, next_most_lines
 
-
-# find the outmost lines
+# find the outmost lines in a list of lines
 def find_outer_lines(lines):
     angle = lines[0][1]
     if angle < 45 and angle > -45:
@@ -129,52 +138,35 @@ def find_outer_lines(lines):
             highest_value = avg[axis]
     return [lowest_line, highest_line]
 
-
-chess_board_lines = find_outer_lines(most_lines)
-chess_board_lines += find_outer_lines(next_most_lines)
-
 # for line in chess_board_lines:
 #     color = (0,255,0) # green
 #     x1,y1,x2,y2 = line[0]
 #     cv2.line(img,(x1,y1),(x2,y2),color,5)
+#
+# cv2.imwrite('images/test2.png',img)
 
-for l in all_lists:
-    for line in l:
-        angle = line[1]
-        x1,y1,x2,y2 = line[0]
-        color = (255,240,0) # cyan
-        cv2.line(img,(x1,y1),(x2,y2),color,5)
+def find_line_intersection(pair, lines):
+    i,j = pair
+    x1,y1,x2,y2 = lines[i][0]
+    x3,y3,x4,y4 = lines[j][0]
+    # https://en.wikipedia.org/wiki/Line%E2%80%93line_intersection#Given_two_points_on_each_line
+    px_num = (x1*y2-y1*x2)*(x3-x4) - (x1-x2)*(x3*y4-y3*x4)
+    px_den = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4)
+    py_num = (x1*y2-y1*x2)*(y3-y4) - (y1-y2)*(x3*y4-y3*x4)
+    py_den = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4)
+    return (px_num//px_den, py_num//py_den)
 
-for line in most_lines:
-    angle = line[1]
-    x1,y1,x2,y2 = line[0]
-    color = (0,255,0) # green
-    cv2.line(img,(x1,y1),(x2,y2),color,5)
+def find_intersections(list_of_lines):
+    lines_pairs = [(0,2), (1,2), (0,3), (1,3)]
+    corners = []
+    for pair in lines_pairs:
+        corner = find_line_intersection(pair, list_of_lines)
+        corners.append(corner)
+        #cv2.circle(img,corner,40,(255,255,255),-1)
+    #cv2.imwrite('images/test3.png',img)
 
-for line in next_most_lines:
-    angle = line[1]
-    x1,y1,x2,y2 = line[0]
-    color = (0,0,255) # red
-    cv2.line(img,(x1,y1),(x2,y2),color,5)
-
-# for l in lines:
-#     s = l[1]
-#     if s < 0.01 and s > 0:
-#         color = (255,111,255) # purple
-#     elif s < -0.01 and s > -0.06:
-#         color = (0,255,0) # green
-#     else:
-#         color = (0,0,255) # red
-#     x1,y1,x2,y2 = l[0]
-#     cv2.line(img,(x1,y1),(x2,y2),color,5)
-cv2.imwrite('images/test2.png',img)
-
-
-# Images
-# Board0
-# -89 : -89
-# -47 : -45
-# -2 : 1
-# 26
-# 42 : 44
-# 86 : 89
+    np_corners = np.empty((4, 2), dtype="float32")
+    for i in range(len(corners)):
+        np_corners[i][0] = corners[i][0]
+        np_corners[i][1] = corners[i][1]
+    return np_corners

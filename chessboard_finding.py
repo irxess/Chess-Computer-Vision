@@ -1,13 +1,22 @@
 import cv2 as cv
 import numpy as np
 from astar import Node, Graph, AStar
-
+import good_features as gf
 
 def find_chessboard(image, method):
     if method == 'greendiff':
         green = greendiff(image)
         corners = find_corners_using_astar(green)
-    # Add different methods here
+    elif method == 'goodfeatures':
+        all_corners = gf.find_81_corners(image)
+        gf.draw_corners(all_corners, image, 'all_corners')
+        lines = gf.find_lines_from_points( all_corners )
+        g1,g2 = gf.find_largest_line_groups(lines)
+        chess_board_lines = gf.find_outer_lines(g1)
+        chess_board_lines += gf.find_outer_lines(g2)
+        corners = gf.find_intersections(chess_board_lines)
+        gf.draw_corners(corners, image, 'board_corners')
+
     else:
         print("Method not implemented or not found")
         return
@@ -33,16 +42,14 @@ def greendiff(image):
     print("Filtered the green in the image.")
     return green_border
 
-
+# assume that the middle pixel of the image is part of the chess board
 def find_corners_using_astar(image):
-    # assume that the chess board is not rotated too much
-    # assume that the middle pixel of the image is part of the chess board
     x,y,_ = image.shape
 
     corners = np.empty((4, 2), dtype="float32")
     i = 0
     for c in [(0,0),(x-1,0),(0,y-1),(x-1,y-1)]:
-        corner = find_corner(image,c[0],c[1])
+        corner = find_astar_corner(image,c[0],c[1])
         corners[i][0] = corner[0]
         corners[i][1] = corner[1]
         i += 1
@@ -50,7 +57,7 @@ def find_corners_using_astar(image):
     return corners
 
 
-def find_corner(image, corner_x, corner_y):
+def find_astar_corner(image, corner_x, corner_y):
     x,y,_ = image.shape
     g = Graph(x,y,image)
     g.startNode = g.grid[x//2][y//2]
@@ -69,22 +76,3 @@ def find_corner(image, corner_x, corner_y):
             best = new_best
             updates = 0
     return best.y, best.x # yes, in this order
-
-    # color the board
-    # for x in range(image.shape[0]):
-    #     for y in range(image.shape[1]):
-    #         # ['start', 'goal', 'unvisited', 'closed', 'open', 'blocked', 'path']
-    #         if g.grid[x][y].state == 'path':
-    #             image[x,y,0] = 255
-    #             image[x,y,2] = 255
-    #         elif g.grid[x][y].state == 'closed':
-    #             image[x,y,0] = 0
-    #             image[x,y,1] = 0
-    #             image[x,y,2] = 255
-    #         elif g.grid[x][y].state == 'open':
-    #             image[x,y,0] = 255
-    #             image[x,y,1] = 255
-    #             image[x,y,2] = 0
-    #         elif g.grid[x][y].state == 'start':
-    #             image[x,y,0] = 255
-    #             image[x,y,2] = 255

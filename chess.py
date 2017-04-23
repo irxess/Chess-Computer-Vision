@@ -9,7 +9,8 @@ from crop import transform, cut_and_save
 
 def main(name):
     image = open_image(name)
-    coordinates = find_chessboard(image, "greendiff")
+#    coordinates = find_chessboard(image, "greendiff")
+    coordinates = find_chessboard(image, "goodfeatures")
     chessboard_image = transform(image, coordinates, 50)
     cut_and_save(chessboard_image, 50, 50)
 
