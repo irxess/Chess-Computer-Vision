@@ -13,14 +13,12 @@ class DataSet(object):
 
     def __init__(self,
                  images,
-                 p_labels,
-                 c_labels):
+                 labels):
         self._num_examples = images.shape[0]
         images = images.astype(np.float32)
         images = np.multiply(images, 1.0 / 255.0)
         self._images = images
-        self._p_labels = p_labels
-        self._c_labels = c_labels
+        self._labels = labels
         self._epochs_completed = 0
         self._index_in_epoch = 0
 
@@ -29,12 +27,8 @@ class DataSet(object):
         return self._images
 
     @property
-    def p_labels(self):
-        return self._p_labels
-
-    @property
-    def c_labels(self):
-        return self._c_labels
+    def labels(self):
+        return self._labels
 
     @property
     def num_examples(self):
@@ -49,34 +43,37 @@ class DataSet(object):
             # Get the rest examples in this epoch
             rest_num_examples = self._num_examples - start
             images_rest_part = self._images[start:self._num_examples]
-            p_labels_rest_part = self.p_labels[start:self._num_examples]
-            c_labels_rest_part = self.c_labels[start:self._num_examples]
+            labels_rest_part = self._labels[start:self._num_examples]
             # Shuffle the data
             perm = np.arange(self._num_examples)
             np.random.shuffle(perm)
             self._images = self.images[perm]
-            self._p_labels = self.p_labels[perm]
-            self._c_labels = self.c_labels[perm]
+            self._labels = self._labels[perm]
             # Start next epoch
             start = 0
             self._index_in_epoch = batch_size - rest_num_examples
             end = self._index_in_epoch
             images_new_part = self._images[start:end]
-            p_labels_new_part = self._p_labels[start:end]
-            c_labels_new_part = self._c_labels[start:end]
+            labels_new_part = self._labels[start:end]
             return np.concatenate((images_rest_part, images_new_part), axis=0), np.concatenate(
-                (p_labels_rest_part, p_labels_new_part), axis=0), np.concatenate(
-                (c_labels_rest_part, c_labels_new_part), axis=0)
+                (labels_rest_part, labels_new_part), axis=0)
         else:
             self._index_in_epoch += batch_size
             end = self._index_in_epoch
-            return self._images[start:end], self._p_labels[start:end], self._c_labels[start:end]
+            return self._images[start:end], self._labels[start:end]
 
 
 def one_hot(index, size):
     label = np.zeros(size)
     label[index] = 1
     return label
+
+
+def one_hot_index(p, c):
+    if c in [0, 2]:
+        return p
+    else:
+        return 6 + p
 
 
 def expand_instance(instance):
@@ -89,7 +86,7 @@ def expand_instance(instance):
         rotations.append(rotate(img, 180))
         rotations.append(rotate(img, 270))
     imgs.extend(rotations)
-    return [[img, instance[1], instance[2]] for img in imgs]
+    return [[img, instance[1]] for img in imgs]
 
 
 def extract_data(validation_fraction, test_fraction):
@@ -120,27 +117,24 @@ def extract_data(validation_fraction, test_fraction):
     tr = []
     vl = []
     ts = []
-    one_hot_index_p = 0
+    p_index = 0
     for piece_data in data:
-        one_hot_index_c = 0
+        c_index = 0
         for color_data in piece_data:
             l = len(color_data)
             vl_index = int(l*validation_fraction)
             ts_index = int(l - l*test_fraction)
             for img in color_data[:vl_index]:
                 vl.append([img,
-                           one_hot(one_hot_index_p, len(PIECES)),
-                           one_hot(one_hot_index_c, len(COLORS))])
+                           one_hot(one_hot_index(p_index, c_index), 13)])
             for img in color_data[vl_index:ts_index]:
                 tr.append([img,
-                           one_hot(one_hot_index_p, len(PIECES)),
-                           one_hot(one_hot_index_c, len(COLORS))])
+                           one_hot(one_hot_index(p_index, c_index), 13)])
             for img in color_data[ts_index:]:
                 ts.append([img,
-                           one_hot(one_hot_index_p, len(PIECES)),
-                           one_hot(one_hot_index_c, len(COLORS))])
-            one_hot_index_c += 1
-        one_hot_index_p += 1
+                           one_hot(one_hot_index(p_index, c_index), 13)])
+            c_index += 1
+        p_index += 1
 
     # Expand training set
     new_tr =[]
@@ -154,24 +148,21 @@ def extract_data(validation_fraction, test_fraction):
     random.shuffle(ts)
 
     tr_imgs = np.array([instance[0] for instance in tr])
-    tr_lbs_p = np.array([instance[1] for instance in tr])
-    tr_lbs_c = np.array([instance[2] for instance in tr])
+    tr_lbs = np.array([instance[1] for instance in tr])
     vl_imgs = np.array([instance[0] for instance in vl])
-    vl_lbs_p = np.array([instance[1] for instance in vl])
-    vl_lbs_c = np.array([instance[2] for instance in vl])
+    vl_lbs = np.array([instance[1] for instance in vl])
     ts_imgs = np.array([instance[0] for instance in ts])
-    ts_lbs_p = np.array([instance[1] for instance in ts])
-    ts_lbs_c = np.array([instance[2] for instance in ts])
+    ts_lbs = np.array([instance[1] for instance in ts])
 
-    return {'tr_imgs': tr_imgs, 'tr_lbs_p': tr_lbs_p, 'tr_lbs_c': tr_lbs_c,
-            'vl_imgs': vl_imgs, 'vl_lbs_p': vl_lbs_p, 'vl_lbs_c': vl_lbs_c,
-            'ts_imgs': ts_imgs, 'ts_lbs_p': ts_lbs_p, 'ts_lbs_c': ts_lbs_c}
+    return {'tr_imgs': tr_imgs, 'tr_lbs': tr_lbs,
+            'vl_imgs': vl_imgs, 'vl_lbs': vl_lbs,
+            'ts_imgs': ts_imgs, 'ts_lbs': ts_lbs}
 
 
 def read_data_sets(validation_fraction=0.0, test_fraction=0.2):
     data = extract_data(validation_fraction, test_fraction)
-    train = DataSet(data['tr_imgs'], data['tr_lbs_p'], data['tr_lbs_c'])
-    validation = DataSet(data['vl_imgs'], data['vl_lbs_p'], data['vl_lbs_c'])
-    test = DataSet(data['ts_imgs'], data['ts_lbs_p'], data['ts_lbs_c'])
+    train = DataSet(data['tr_imgs'], data['tr_lbs'])
+    validation = DataSet(data['vl_imgs'], data['vl_lbs'])
+    test = DataSet(data['ts_imgs'], data['ts_lbs'])
 
     return Datasets(train=train, validation=validation, test=test)
