@@ -23,8 +23,8 @@ def deepnn(x):
     """
 
     # First convolutional layer - maps one rgb image to 32 feature maps.
-    W_conv1 = weight_variable([5, 5, 3, 32])
-    b_conv1 = bias_variable([32])
+    W_conv1 = weight_variable([5, 5, 3, 64])
+    b_conv1 = bias_variable([64])
     h_conv1 = tf.nn.elu(conv2d(x, W_conv1) + b_conv1)
 
     # Pooling layer - downsamples by 2X.
