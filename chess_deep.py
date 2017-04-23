@@ -41,19 +41,13 @@ def deepnn(x):
     # Second pooling layer.
     h_pool2 = max_pool_2x2(h_conv2)
 
-    # Local response normalization
-    h_norm2 = tf.nn.lrn(h_pool2, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75)
-
     # Third convolutional layer -- maps 64 feature maps to 128.
     W_conv3 = weight_variable([5, 5, 64, 128])
     b_conv3 = bias_variable([128])
     h_conv3 = tf.nn.elu(conv2d(h_pool2, W_conv3) + b_conv3)
 
-    # Local response normalization
-    h_norm3 = tf.nn.lrn(h_conv3, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75)
-
     # Third pooling layer.
-    h_pool3 = max_pool_2x2(h_norm3)
+    h_pool3 = max_pool_2x2(h_conv3)
 
     # Fully connected layer 1 -- after 3 round of downsampling, our 48x48 image
     # is down to 6x6x128 feature maps -- maps this to 1024 features.
