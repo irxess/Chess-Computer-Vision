@@ -30,21 +30,30 @@ def deepnn(x):
     # Pooling layer - downsamples by 2X.
     h_pool1 = max_pool_2x2(h_conv1)
 
+    # Local response normalization
+    h_norm1 = tf.nn.lrn(h_pool1, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75)
+
     # Second convolutional layer -- maps 32 feature maps to 64.
     W_conv2 = weight_variable([5, 5, 64, 64])
     b_conv2 = bias_variable([64])
-    h_conv2 = tf.nn.elu(conv2d(h_pool1, W_conv2) + b_conv2)
+    h_conv2 = tf.nn.elu(conv2d(h_norm1, W_conv2) + b_conv2)
 
     # Second pooling layer.
     h_pool2 = max_pool_2x2(h_conv2)
+
+    # Local response normalization
+    h_norm2 = tf.nn.lrn(h_pool2, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75)
 
     # Third convolutional layer -- maps 64 feature maps to 128.
     W_conv3 = weight_variable([5, 5, 64, 128])
     b_conv3 = bias_variable([128])
     h_conv3 = tf.nn.elu(conv2d(h_pool2, W_conv3) + b_conv3)
 
+    # Local response normalization
+    h_norm3 = tf.nn.lrn(h_conv3, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75)
+
     # Third pooling layer.
-    h_pool3 = max_pool_2x2(h_conv3)
+    h_pool3 = max_pool_2x2(h_norm3)
 
     # Fully connected layer 1 -- after 3 round of downsampling, our 48x48 image
     # is down to 6x6x128 feature maps -- maps this to 1024 features.
@@ -139,8 +148,9 @@ def train_model():
 
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
+        max_ta = 0.75
         for i in range(20000):
-            batch = chess.train.next_batch(75)
+            batch = chess.train.next_batch(128)
             if i % 100 == 0:
                 train_accuracy = accuracy.eval(feed_dict={
                     x: batch[0], y_: batch[1], keep_prob: 1.0})
@@ -148,11 +158,11 @@ def train_model():
                     x: chess.test.images, y_: chess.test.labels, keep_prob: 1.0})
                 print('step {:04d} accuracy: train {:.2f}, test {:.2f}'.format(
                     i, train_accuracy, test_accuracy))
+                if test_accuracy > max_ta:
+                    # Save the variables to disk.
+                    save_path = saver.save(sess, "/tmp/chess_model.ckpt")
+                    print("Model saved in file: {}".format(save_path))
             train_step.run(feed_dict={x: batch[0], y_: batch[1], keep_prob: 0.7})
-
-        # Save the variables to disk.
-        save_path = saver.save(sess, "/tmp/chess_model.ckpt")
-        print("Model saved in file: {}".format(save_path))
 
 if __name__ == '__main__':
     train_model()
