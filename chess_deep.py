@@ -1,5 +1,5 @@
 import tensorflow as tf
-import sys, os, argparse
+import os
 import chess_dataset
 
 # Disable compile warnings
@@ -30,13 +30,10 @@ def deepnn(x):
     # Pooling layer - downsamples by 2X.
     h_pool1 = max_pool_2x2(h_conv1)
 
-    # Local response normalization
-    h_norm1 = tf.nn.lrn(h_pool1, 4, bias=1.0, alpha=0.001 / 9.0, beta=0.75)
-
     # Second convolutional layer -- maps 32 feature maps to 64.
     W_conv2 = weight_variable([5, 5, 64, 64])
     b_conv2 = bias_variable([64])
-    h_conv2 = tf.nn.elu(conv2d(h_norm1, W_conv2) + b_conv2)
+    h_conv2 = tf.nn.elu(conv2d(h_pool1, W_conv2) + b_conv2)
 
     # Second pooling layer.
     h_pool2 = max_pool_2x2(h_conv2)
@@ -54,8 +51,8 @@ def deepnn(x):
     W_fc1 = weight_variable([6 * 6 * 128, 1024])
     b_fc1 = bias_variable([1024])
 
-    h_pool2_flat = tf.reshape(h_pool3, [-1, 6 * 6 * 128])
-    h_fc1 = tf.nn.elu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
+    h_pool3_flat = tf.reshape(h_pool3, [-1, 6 * 6 * 128])
+    h_fc1 = tf.nn.elu(tf.matmul(h_pool3_flat, W_fc1) + b_fc1)
 
     # Dropout - controls the complexity of the model, prevents co-adaptation of
     # features.
