@@ -80,7 +80,7 @@ def expand_instance(instance):
     imgs = []
     for i in range(3):
         for j in range(3):
-            imgs.append(instance[0][i:i+49, j:j+49])
+            imgs.append(instance[0][i:i+48, j:j+48])
     flips = []
     for img in imgs:
         flips.append(np.flip(img, 0))
@@ -160,10 +160,6 @@ def extract_data(validation_fraction, test_fraction):
     random.shuffle(tr)
     random.shuffle(vl)
     random.shuffle(ts)
-
-    print(len(tr))
-    print(len(vl))
-    print(len(ts))
 
     tr_imgs = np.array([instance[0] for instance in tr])
     tr_lbs = np.array([instance[1] for instance in tr])
